@@ -1,7 +1,14 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:get/get.dart';
+import 'package:loginfirebase/src/features/authentication/controllers/signup_controller.dart';
+import 'package:loginfirebase/src/features/authentication/screens/forget_password/forget_password_otp/otp_screen.dart';
+import 'package:loginfirebase/src/features/authentication/screens/signup/signup_screen.dart';
+import 'package:loginfirebase/src/features/authentication/screens/signup/widgets/signup_form_widget.dart';
 import 'package:loginfirebase/src/features/authentication/screens/welcome/welcome_screen.dart';
+import 'package:loginfirebase/src/features/core/models/users/users_model.dart';
 import 'package:loginfirebase/src/features/core/screens/dashboard/dashboard.dart';
 import 'package:loginfirebase/src/repository/exception/login_email_password_failure.dart';
 import 'package:loginfirebase/src/repository/exception/signup_email_password_failure.dart';
@@ -12,6 +19,7 @@ class AuthenticationRepository extends GetxController {
   final _auth = FirebaseAuth.instance;
   late final Rx<User?> firebaseUser;
   var verificationId = ''.obs;
+  final _firebaseFirestore = FirebaseFirestore.instance;
 
   @override
   void onReady() {
@@ -23,10 +31,10 @@ class AuthenticationRepository extends GetxController {
     ever(firebaseUser, _setInitialScreen);
   }
 
-  _setInitialScreen(User? user) {
+  _setInitialScreen(User? user) async {
     user == null
         ? Get.offAll(() => const WelcomeScreen())
-        : Get.offAll(() => const Dashboard());
+        : checkExistingUser();
   }
 
   Future<void> phoneAuthentication(String phone) async {
@@ -37,6 +45,7 @@ class AuthenticationRepository extends GetxController {
       },
       codeSent: (String verificationId, int? resendToken) {
         this.verificationId.value = verificationId;
+        Get.to(() => OTPScreen());
       },
       codeAutoRetrievalTimeout: (String verificationId) {
         this.verificationId.value = verificationId;
@@ -51,11 +60,56 @@ class AuthenticationRepository extends GetxController {
     );
   }
 
-  Future<bool> verifyOTP(String otp) async {
-    var credentials = await _auth.signInWithCredential(
-        PhoneAuthProvider.credential(
-            verificationId: verificationId.value, smsCode: otp));
-    return credentials.user != null ? true : false;
+  Future<bool> authenverifyOTP(String otp) async {
+    UserCredential? credentials;
+    try {
+      credentials = await _auth.signInWithCredential(
+          PhoneAuthProvider.credential(
+              verificationId: verificationId.value, smsCode: otp));
+    } catch (e) {
+      Get.snackbar('Error', e.toString());
+    }
+    return credentials?.user != null ? true : false;
+  }
+
+  Future<bool> checkExistingUser() async {
+    DocumentSnapshot snapshot = await _firebaseFirestore
+        .collection("users")
+        .doc(firebaseUser.value?.uid)
+        .get();
+
+    if (snapshot.exists) {
+      print("USER EXISTS");
+      getDataFromFirebasestore()
+          .then((value) => Get.put(SignUpController()).saveUserDataToSp())
+          .then((value) => Get.put(SignUpController())
+              .getDataFromSp()
+              .whenComplete(() => Get.offAll(() => const Dashboard())));
+
+      return true;
+    } else {
+      print("NEW USER");
+      Get.offAll(() => const SignupScreen());
+      return false;
+    }
+  }
+
+  Future getDataFromFirebasestore() async {
+    await _firebaseFirestore
+        .collection("users")
+        .doc(_auth.currentUser!.uid)
+        .get()
+        .then((DocumentSnapshot snapshot) {
+      Get.put(SignUpController()).setUserModel(UserModel(
+        name: snapshot["name"],
+        email: snapshot["email"],
+        bio: snapshot["bio"],
+        profilePic: snapshot["profilePic"],
+        createdAt: snapshot["createdAt"],
+        phoneNumber: snapshot["phoneNumber"],
+        uid: snapshot["uid"],
+      ));
+    });
   }
 
   Future<String?> createUserWithEmailAndPassword(
@@ -85,21 +139,6 @@ class AuthenticationRepository extends GetxController {
       final ex = LoginWithEmailAndPasswordFailure.code(e.code);
       return ex.message;
     } catch (_) {
-      const ex = LoginWithEmailAndPasswordFailure();
-      return ex.message;
-    }
-    return null;
-  }
-
-  Future<String?> loginWithPhone(String phoneNo) async {
-    try {
-      await _auth.signInWithPhoneNumber(phoneNo);
-    } on FirebaseAuthException catch (e) {
-      final ex = LoginWithEmailAndPasswordFailure.code(e.code);
-      return ex.message;
-    } catch (_) {
-      print(_);
-
       const ex = LoginWithEmailAndPasswordFailure();
       return ex.message;
     }
