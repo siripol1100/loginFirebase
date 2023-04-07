@@ -48,6 +48,8 @@ class LoginForm extends StatelessWidget {
               builder: (context, setState) {
                 return Obx(() => TextFormField(
                       // controller: controller.phoneNumber,
+                      validator: (value) =>
+                          value!.isEmpty ? 'phoneNumber cannot be blank' : null,
                       onChanged: (value) {
                         setState(
                           () => controller.phoneNumber.text = value,
@@ -91,13 +93,6 @@ class LoginForm extends StatelessWidget {
                         hintText: 'phone',
                         border: const OutlineInputBorder(),
                       ),
-                      // onChanged: (value) {
-                      //   setState(
-                      //     () {
-                      //       controller.phoneNumber.text = value;
-                      //     },
-                      //   );
-                      // },
                     ));
               },
             ),

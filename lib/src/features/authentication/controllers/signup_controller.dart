@@ -28,7 +28,6 @@ class SignUpController extends GetxController {
   final _firebaseFirestore = FirebaseFirestore.instance;
 
   final _userModel = Rxn<UserModel>();
-
   UserModel? get userModel => _userModel.value;
 
   setUserModel(UserModel? userModel) {
@@ -79,7 +78,7 @@ class SignUpController extends GetxController {
         userModel.uid = uid;
       });
       _userModel.value = userModel;
-      
+
       await _firebaseFirestore
           .collection("users")
           .doc(uid)
