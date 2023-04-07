@@ -12,6 +12,7 @@ import 'package:loginfirebase/src/features/core/models/users/users_model.dart';
 import 'package:loginfirebase/src/features/core/screens/dashboard/dashboard.dart';
 import 'package:loginfirebase/src/repository/exception/login_email_password_failure.dart';
 import 'package:loginfirebase/src/repository/exception/signup_email_password_failure.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthenticationRepository extends GetxController {
   static AuthenticationRepository get instance => Get.find();
@@ -80,9 +81,11 @@ class AuthenticationRepository extends GetxController {
 
     if (snapshot.exists) {
       print("USER EXISTS");
-      getDataFromFirebasestore()
-          .then((value) => Get.put(SignUpController()).saveUserDataToSp())
-          .then((value) => Get.put(SignUpController())
+      final controller = Get.put(SignUpController());
+      controller
+          .getDataFromFirebasestore()
+          .then((value) => controller.saveUserDataToSp())
+          .then((value) => controller
               .getDataFromSp()
               .whenComplete(() => Get.offAll(() => const Dashboard())));
 
@@ -92,24 +95,6 @@ class AuthenticationRepository extends GetxController {
       Get.offAll(() => const SignupScreen());
       return false;
     }
-  }
-
-  Future getDataFromFirebasestore() async {
-    await _firebaseFirestore
-        .collection("users")
-        .doc(_auth.currentUser!.uid)
-        .get()
-        .then((DocumentSnapshot snapshot) {
-      Get.put(SignUpController()).setUserModel(UserModel(
-        name: snapshot["name"],
-        email: snapshot["email"],
-        bio: snapshot["bio"],
-        profilePic: snapshot["profilePic"],
-        createdAt: snapshot["createdAt"],
-        phoneNumber: snapshot["phoneNumber"],
-        uid: snapshot["uid"],
-      ));
-    });
   }
 
   Future<String?> createUserWithEmailAndPassword(
@@ -145,5 +130,10 @@ class AuthenticationRepository extends GetxController {
     return null;
   }
 
-  Future<void> logout() async => await _auth.signOut();
+  Future<void> logout() async {
+    SharedPreferences preferences = await SharedPreferences.getInstance();
+    await _auth.signOut();
+    preferences.clear();
+    update();
+  }
 }

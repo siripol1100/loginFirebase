@@ -79,6 +79,7 @@ class SignUpController extends GetxController {
         userModel.uid = uid;
       });
       _userModel.value = userModel;
+      
       await _firebaseFirestore
           .collection("users")
           .doc(uid)
@@ -110,5 +111,23 @@ class SignUpController extends GetxController {
     String data = preferences.getString("user_model") ?? '';
     _userModel.value = UserModel.fromMap(jsonDecode(data));
     update();
+  }
+
+  Future getDataFromFirebasestore() async {
+    await _firebaseFirestore
+        .collection("users")
+        .doc(AuthenticationRepository.instance.firebaseUser.value!.uid)
+        .get()
+        .then((DocumentSnapshot snapshot) {
+      Get.put(SignUpController()).setUserModel(UserModel(
+        name: snapshot["name"],
+        email: snapshot["email"],
+        bio: snapshot["bio"],
+        profilePic: snapshot["profilePic"],
+        createdAt: snapshot["createdAt"],
+        phoneNumber: snapshot["phoneNumber"],
+        uid: snapshot["uid"],
+      ));
+    });
   }
 }
