@@ -28,6 +28,7 @@ class SignUpController extends GetxController {
   final _firebaseFirestore = FirebaseFirestore.instance;
 
   final _userModel = Rxn<UserModel>();
+
   UserModel? get userModel => _userModel.value;
 
   setUserModel(UserModel? userModel) {
@@ -118,7 +119,7 @@ class SignUpController extends GetxController {
         .doc(AuthenticationRepository.instance.firebaseUser.value!.uid)
         .get()
         .then((DocumentSnapshot snapshot) {
-      Get.put(SignUpController()).setUserModel(UserModel(
+      _userModel.value = UserModel(
         name: snapshot["name"],
         email: snapshot["email"],
         bio: snapshot["bio"],
@@ -126,7 +127,8 @@ class SignUpController extends GetxController {
         createdAt: snapshot["createdAt"],
         phoneNumber: snapshot["phoneNumber"],
         uid: snapshot["uid"],
-      ));
+      );
+      update();
     });
   }
 }

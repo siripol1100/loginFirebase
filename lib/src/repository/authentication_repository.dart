@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -21,6 +23,8 @@ class AuthenticationRepository extends GetxController {
   late final Rx<User?> firebaseUser;
   var verificationId = ''.obs;
   final _firebaseFirestore = FirebaseFirestore.instance;
+
+  final controller = Get.put(SignUpController());
 
   @override
   void onReady() {
@@ -46,7 +50,7 @@ class AuthenticationRepository extends GetxController {
       },
       codeSent: (String verificationId, int? resendToken) {
         this.verificationId.value = verificationId;
-        Get.to(() => OTPScreen());
+        Get.to(() => const OTPScreen());
       },
       codeAutoRetrievalTimeout: (String verificationId) {
         this.verificationId.value = verificationId;
@@ -73,27 +77,22 @@ class AuthenticationRepository extends GetxController {
     return credentials?.user != null ? true : false;
   }
 
-  Future<bool> checkExistingUser() async {
+  Future checkExistingUser() async {
     DocumentSnapshot snapshot = await _firebaseFirestore
         .collection("users")
-        .doc(firebaseUser.value?.uid)
+        .doc(firebaseUser.value!.uid)
         .get();
 
     if (snapshot.exists) {
       print("USER EXISTS");
-      final controller = Get.put(SignUpController());
-      controller
-          .getDataFromFirebasestore()
-          .then((value) => controller.saveUserDataToSp())
+      controller.getDataFromFirebasestore().then((value) => controller
+          .saveUserDataToSp()
           .then((value) => controller
               .getDataFromSp()
-              .whenComplete(() => Get.offAll(() => const Dashboard())));
-
-      return true;
+              .whenComplete(() => Get.offAll(() => const Dashboard()))));
     } else {
       print("NEW USER");
       Get.offAll(() => const SignupScreen());
-      return false;
     }
   }
 
